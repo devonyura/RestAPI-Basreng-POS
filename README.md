@@ -1,68 +1,155 @@
-# CodeIgniter 4 Application Starter
+# Basreng POS - REST API
 
-## What is CodeIgniter?
+**RestAPI-Basreng-POS** adalah backend untuk aplikasi **Basreng POS**, sebuah sistem pencatatan transaksi berbasis **Progressive Web App (PWA)** yang dikembangkan menggunakan **CodeIgniter 4** sebagai REST API. Aplikasi ini dirancang untuk membantu bisnis dalam mencatat transaksi tanpa manajemen stok barang.
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+---
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+## 🔹 **Versi API**
+**v1.0.0** - Versi awal API dengan fitur pencatatan transaksi, laporan, dan manajemen produk.
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+---
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+## 📌 **Fitur Utama REST API**
+| No | Fitur | Endpoint | Method |
+|----|--------|-------------|--------|
+| 1  | Autentikasi User | `/auth/login` | POST |
+| 2  | Logout User | `/auth/logout` | POST |
+| 3  | Daftar Transaksi | `/transactions` | GET |
+| 4  | Detail Transaksi | `/transactions/{id}` | GET |
+| 5  | Tambah Transaksi | `/transactions` | POST |
+| 6  | Hapus Transaksi | `/transactions/{id}` | DELETE |
+| 7  | Laporan Penjualan | `/reports/sales` | GET |
+| 8  | Grafik Penjualan | `/reports/charts` | GET |
+| 9  | Export Laporan PDF | `/reports/export` | GET |
+| 10 | Manajemen Produk | `/products` | GET/POST/PUT/DELETE |
+| 11 | Manajemen Kategori | `/categories` | GET/POST/PUT/DELETE |
+| 12 | Manajemen User | `/users` | GET/POST/PUT/DELETE |
 
-## Installation & updates
+---
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+## 📂 **Struktur Database**
+### **1. Tabel `users` (Manajemen Pengguna)**
+```sql
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE,
+    password VARCHAR(255),
+    role ENUM('kasir', 'admin'),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+### **2. Tabel `transactions` (Pencatatan Transaksi)**
+```sql
+CREATE TABLE transactions (
+    id VARCHAR(20) PRIMARY KEY,
+    user_id INT,
+    total_price DECIMAL(10,2),
+    payment_method ENUM('cash', 'qris', 'dana', 'transfer'),
+    order_status ENUM('offline', 'online'),
+    customer_name VARCHAR(100),
+    customer_address TEXT,
+    customer_phone VARCHAR(15),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+```
 
-## Setup
+### **3. Tabel `transaction_details` (Detail Transaksi)**
+```sql
+CREATE TABLE transaction_details (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    transaction_id VARCHAR(20),
+    product_id INT,
+    quantity INT,
+    subtotal DECIMAL(10,2),
+    FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+```
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+### **4. Tabel `products` (Manajemen Produk)**
+```sql
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100),
+    category_id INT,
+    price DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+```
 
-## Important Change with index.php
+### **5. Tabel `categories` (Kategori Produk)**
+```sql
+CREATE TABLE categories (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
 
-`index.php` is no longer in the root of the project! It has been moved inside the *public* folder,
-for better security and separation of components.
+---
 
-This means that you should configure your web server to "point" to your project's *public* folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter *public/...*, as the rest of your logic and the
-framework are exposed.
+## 🚀 **Teknologi yang Digunakan**
+- **CodeIgniter 4** (Framework PHP untuk REST API)
+- **MySQL** (Database Management System)
+- **JWT (JSON Web Token)** untuk autentikasi
+- **DomPDF** untuk export laporan ke PDF
 
-**Please** read the user guide for a better explanation of how CI4 works!
+---
 
-## Repository Management
+## 📌 **Cara Menjalankan REST API**
+1. **Clone repo ini:**
+   ```sh
+   git clone https://github.com/username/RestAPI-Basreng-POS.git
+   cd RestAPI-Basreng-POS
+   ```
+2. **Instal dependensi dengan Composer:**
+   ```sh
+   composer install
+   ```
+3. **Buat file .env dan atur konfigurasi database:**
+   ```sh
+   cp env .env
+   ```
+   Sesuaikan bagian berikut:
+   ```env
+   database.default.hostname = localhost
+   database.default.database = basreng_pos
+   database.default.username = root
+   database.default.password = 
+   database.default.DBDriver = MySQLi
+   ```
+4. **Jalankan migrasi database:**
+   ```sh
+   php spark migrate
+   ```
+5. **Menjalankan server lokal:**
+   ```sh
+   php spark serve
+   ```
+6. **REST API siap digunakan di:**
+   ```
+   http://localhost:8080
+   ```
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+---
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+## 🔗 **Dokumentasi API**
+Dokumentasi API menggunakan Postman bisa diakses di:
+[Postman Collection](https://www.postman.com/)
 
-## Server Requirements
+---
 
-PHP version 8.1 or higher is required, with the following extensions installed:
+## 🤝 **Kontribusi**
+Jika ingin berkontribusi, silakan fork repository ini dan buat **pull request**.
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
+---
 
-> [!WARNING]
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - If you are still using PHP 7.4 or 8.0, you should upgrade immediately.
-> - The end of life date for PHP 8.1 will be December 31, 2025.
+## 📜 **Lisensi**
+MIT License - Silakan gunakan dan modifikasi sesuai kebutuhan.
 
-Additionally, make sure that the following extensions are enabled in your PHP:
+---
 
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+🔥 **Basreng POS - REST API v1.0.0** 🔥
