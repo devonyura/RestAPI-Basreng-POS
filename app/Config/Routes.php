@@ -17,6 +17,21 @@ $routes->group('api/auth', function ($routes) {
 
 $routes->group('api', ['filter' => 'auth'], function ($routes) {
   $routes->resource('siswa', ['controller' => 'SiswaController']);
+
+  $routes->resource('transactions', ['controller' => 'TransactionsController']);
+  $routes->post('transactions/create-transaction', 'TransactionsController::createTransaction');
+  $routes->post('transactions/get-receipt', 'TransactionsController::get_receipt');
+
+  $routes->resource('products', ['controller' => 'ProductsController']);
+  $routes->resource('categories', ['controller' => 'CategoriesController']);
+
+  $routes->get('transaction-details/transaction/(:num)', 'TransactionsDetailsController::showByTransactionId/$1');
+  $routes->resource('transaction-details', ['controller' => 'TransactionsDetailsController']);
+
+
+  // Reports endpoint
+  $routes->post('reports/sales', 'ReportsController::sales');
+  $routes->post('reports/charts', 'ReportsController::charts');
 });
 
 $routes->get('api/logs', 'LogController::index');
