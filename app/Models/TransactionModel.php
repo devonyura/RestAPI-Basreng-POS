@@ -11,8 +11,11 @@ class TransactionModel extends Model
   protected $allowedFields = [
     'transaction_code',
     'user_id',
+    'branch_id',
     'date_time',
     'total_price',
+    'cash_amount',
+    'change_amount',
     'payment_method',
     'is_online_order',
     'customer_name',

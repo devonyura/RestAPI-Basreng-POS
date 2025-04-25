@@ -41,8 +41,8 @@ class TransactionsController extends ResourceController
       'total_price' => $input['total_price'],
       'payment_method' => $input['payment_method'],
       'is_online_order' => $input['is_online_order'],
-      'cash_amount' => $input['cash_amount'] ?? '0',
-      'change_amount' => $input['change_amount'] ?? '0',
+      'cash_amount' => $input['cash_amount'],
+      'change_amount' => $input['change_amount'],
       'created_at' => date('Y-m-d H:i:s')
     ];
 
@@ -229,64 +229,97 @@ class TransactionsController extends ResourceController
   // POST /transactions
   public function create()
   {
+    $db = \Config\Database::connect();
+    $transactionModel = new \App\Models\TransactionModel();
+    $transactionDetailsModel = new \App\Models\TransactionDetailsModel();
+
+    $data = $this->request->getJSON(true);
+
+    // Validasi awal
+    if (!isset($data['transaction']) || !isset($data['transaction_details'])) {
+      return $this->failValidationErrors('Data transaksi atau detail transaksi tidak ditemukan.');
+    }
+
+    $transaction = $data['transaction'];
+    $details = $data['transaction_details'];
+
     $rules = [
       'transaction_code' => 'required|is_unique[transactions.transaction_code]',
       'user_id'          => 'required|integer',
+      'branch_id'        => 'required|integer',
       'date_time'        => 'required',
       'total_price'      => 'required|decimal',
+      'cash_amount'      => 'required|decimal',
+      'change_amount'    => 'required|decimal',
       'payment_method'   => 'required',
-      'is_online_order'  => 'required'
-      // Field tambahan bisa disesuaikan
+      'is_online_order'  => 'required',
     ];
 
-    if (!$this->validate($rules)) {
+    if (!$this->validateData($transaction, $rules)) {
       return $this->failValidationErrors($this->validator->getErrors());
     }
 
-    $data = $this->request->getJSON();
+    // Siapkan data transaksi
     $transactionData = [
-      'transaction_code' => $data->transaction_code,
-      'user_id'          => $data->user_id,
-      'date_time'        => $data->date_time,
-      'total_price'      => $data->total_price,
-      'payment_method'   => $data->payment_method,
-      'is_online_order'  => $data->is_online_order,
-      'customer_name'    => $data->customer_name ?? null,
-      'customer_address' => $data->customer_address ?? null,
-      'customer_phone'   => $data->customer_phone ?? null,
-      'notes'            => $data->notes ?? null,
+      'transaction_code' => $transaction['transaction_code'],
+      'user_id'          => $transaction['user_id'],
+      'branch_id'        => $transaction['branch_id'],
+      'date_time'        => $transaction['date_time'],
+      'total_price'      => $transaction['total_price'],
+      'cash_amount'      => $transaction['cash_amount'],
+      'change_amount'    => $transaction['change_amount'],
+      'payment_method'   => $transaction['payment_method'],
+      'is_online_order'  => $transaction['is_online_order'] ?? 0,
+      'customer_name'    => $transaction['customer_name'] ?? '',
+      'customer_address' => $transaction['customer_address'] ?? '',
+      'customer_phone'   => $transaction['customer_phone'] ?? '',
+      'notes'            => $transaction['notes'] ?? '',
     ];
 
+    // Mulai database transaction
+    $db->transBegin();
+
     try {
-      if (!$this->model->insert($transactionData)) {
-        $this->createLog("CREATE_TRANSACTION", ['ERROR']);
-        return Services::response()
-          ->setJSON([
-            'status'  => 'error',
-            'message' => 'Gagal menambahkan transaksi.',
-            'errors'  => $this->model->errors()
-          ])
-          ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+      // Simpan transaksi utama
+      $transactionModel->insert($transactionData);
+      $transactionId = $transactionModel->getInsertID();
+
+      // Simpan detail transaksi
+      foreach ($details as $item) {
+        $transactionDetailsModel->insert([
+          'transaction_id' => $transactionId,
+          'product_id'     => $item['product_id'],
+          'quantity'       => $item['quantity'],
+          'price'          => $item['price'],
+          'subtotal'       => $item['subtotal'],
+        ]);
       }
+
+      // Jika semua berhasil
+      if ($db->transStatus() === false) {
+        $db->transRollback();
+        $this->createLog("CREATE_TRANSACTION", ['ERROR']);
+        return $this->failServerError('Gagal menyimpan transaksi.');
+      }
+
+      $db->transCommit();
       $this->createLog("CREATE_TRANSACTION", ['SUCCESS']);
-      return Services::response()
-        ->setJSON([
-          'status'  => 'success',
-          'message' => 'Transaksi berhasil ditambahkan',
-          'data'    => $transactionData
-        ])
-        ->setStatusCode(ResponseInterface::HTTP_CREATED);
-    } catch (Exception $e) {
-      $this->createLog('CREATE_TRANSACTION', ['ERROR']);
-      return Services::response()
-        ->setJSON([
-          'status'  => 'error',
-          'message' => 'Terjadi kesalahan pada server.',
-          'error'   => $e->getMessage()
-        ])
-        ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+      return $this->respondCreated([
+        'status'  => 'success',
+        'message' => 'Transaksi berhasil disimpan',
+        'data'    => [
+          'transaction_id' => $transactionId,
+          'transaction' => $transactionData,
+          'details'     => $details
+        ]
+      ]);
+    } catch (\Throwable $e) {
+      $db->transRollback();
+      $this->createLog("CREATE_TRANSACTION", ['EXCEPTION']);
+      return $this->failServerError($e->getMessage());
     }
   }
+
 
   // DELETE /transactions/{id}
   public function delete($id = null)

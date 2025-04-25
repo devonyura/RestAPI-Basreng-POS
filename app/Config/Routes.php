@@ -24,6 +24,9 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
 
   $routes->resource('products', ['controller' => 'ProductsController']);
   $routes->resource('categories', ['controller' => 'CategoriesController']);
+  $routes->resource('subcategories', ['controller' => 'SubCategoriesController']);
+  $routes->resource('branch', ['controller' => 'BranchController']);
+
 
   $routes->get('transaction-details/transaction/(:num)', 'TransactionsDetailsController::showByTransactionId/$1');
   $routes->resource('transaction-details', ['controller' => 'TransactionsDetailsController']);

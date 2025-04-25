@@ -3,18 +3,59 @@
 namespace App\Controllers;
 
 use App\Models\TransactionDetailsModel;
+use App\Models\ActivityLogModel;
+use App\Helpers\JwtHelper;
 use CodeIgniter\RESTful\ResourceController;
 use CodeIgniter\HTTP\ResponseInterface;
+use Config\Services;
+use Exception;
 
 class CategoriesController extends ResourceController
 {
   protected $modelName = 'App\Models\CategoryModel';
   protected $format = 'json';
 
+  private function createLog($action, $details = null)
+  {
+    $jwtHelper = new JwtHelper();
+    $logModel  = new ActivityLogModel();
+    $request   = service('request');
+    $authHeader = $request->getHeaderLine('Authorization');
+
+    if ($authHeader && preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+      $token   = $matches[1];
+      $decoded = $jwtHelper->validateJWT($token);
+      if ($decoded) {
+        $logModel->logActivity($decoded['id'], $decoded['username'], $action, $details);
+      }
+    }
+  }
+
   // Ambil semua detail transaksi
   public function index()
   {
-    return $this->respond($this->model->findAll());
+    try {
+      $data = $this->model->findAll();
+      if (empty($data)) {
+        $this->createLog('READ_ALL_CATEGORIES', 'Tidak ada data kategori.');
+        return $this->failNotFound('Tidak ada data kategori.');
+      }
+      $this->createLog('READ_ALL_CATEGORIES', ['SUCCESS']);
+      return $this->respond([
+        'status' => 'success',
+        'data'   => $data
+      ]);
+    } catch (Exception $e) {
+      $this->createLog('READ_ALL_CATEGORIES', ['ERROR']);
+      return Services::response()
+        ->setJSON([
+          'status'  => 'error',
+          'message' => 'Terjadi kesalahan pada server.',
+          'error'   => $e->getMessage()
+        ])
+        ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+    }
+    // return $this->respond($this->model->findAll());
   }
 
   // Ambil detail transaksi berdasarkan ID
