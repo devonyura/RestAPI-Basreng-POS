@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\TransactionModel;
 use App\Models\ActivityLogModel;
+use App\Models\UserModel;
 use App\Helpers\JwtHelper;
 use CodeIgniter\RESTful\ResourceController;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -178,15 +179,62 @@ class TransactionsController extends ResourceController
   public function index()
   {
     try {
-      $data = $this->model->findAll();
-      if (empty($data)) {
+
+      $db = \Config\Database::connect();
+      $builder = $db->table('transactions');
+      $builder->select('transactions.transaction_code, users.username AS kasir, transactions.total_price, transactions.date_time');
+      $builder->join('users', 'users.id = transactions.user_id');
+
+      // Ambil param username
+      $username = $this->request->getGet('username');
+      if (!empty($username)) {
+        $builder->where('users.username', $username);
+      }
+
+      // Ambil param date
+      $dateFilter = $this->request->getGet('date');
+      if (!empty($dateFilter)) {
+        if ($dateFilter === 'today') {
+          $today =  date('Y-m-d');
+          $builder->where('DATE(transactions.date_time)', $today);
+        } elseif (is_numeric($dateFilter)) {
+          $dayAgo = date('Y-m-d', strtotime("-$dateFilter days"));
+          $builder->where('DATE(transactions.date_time) >=', $dayAgo);
+        }
+      }
+
+      // Ambil param branch
+      $branchId = $this->request->getGet('branch');
+      if (!empty($branchId)) {
+        $builder->where('transactions.branch_id', $branchId);
+      }
+
+
+      $query = $builder->get();
+      $results = $query->getResultArray();
+
+      if (empty($results)) {
         $this->createLog('READ_ALL_TRANSACTIONS', 'Tidak ada data transaksi.');
         return $this->failNotFound('Tidak ada data transaksi.');
       }
+
+      // Format hasil untuk ambil date dan time dari kolom date_time
+      $formatted = [];
+      foreach ($results as $row) {
+        $dateTime = new \DateTime($row['date_time']);
+        $formatted[] = [
+          'transaction_code' => $row['transaction_code'],
+          'kasir'            => $row['kasir'],
+          'date'             => $dateTime->format('Y-m-d'),
+          'time'             => $dateTime->format('H:i'),
+          'total_price'      => $row['total_price'],
+        ];
+      }
+
       $this->createLog('READ_ALL_TRANSACTIONS', ['SUCCESS']);
       return $this->respond([
         'status' => 'success',
-        'data'   => $data
+        'data'   => $formatted,
       ]);
     } catch (Exception $e) {
       $this->createLog('READ_ALL_TRANSACTIONS', ['ERROR']);
@@ -201,18 +249,47 @@ class TransactionsController extends ResourceController
   }
 
   // GET /transactions/{id}
-  public function show($id = null)
+  public function show($transactions_code = null)
   {
     try {
-      $data = $this->model->find($id);
-      if (!$data) {
+
+      $db = \Config\Database::connect();
+      $builder = $db->table('transactions');
+      $builder->select('*');
+      $builder->where('transaction_code', $transactions_code);
+      $transaction = $builder->get()->getRowArray();
+
+
+      if (!$transaction) {
         $this->createLog("SHOW_TRANSACTION", ['ERROR: Transaksi tidak ditemukan.']);
         return $this->failNotFound('Transaksi tidak ditemukan.');
       }
+
+      // Ambil transaction_id berdasarkan transaction_id
+      $builderDetail = $db->table('transaction_details');
+      $builderDetail->select('
+	    transaction_details.transaction_id,
+	    transaction_details.product_id,
+	    products.name AS product_name,
+	    transaction_details.quantity,
+	    transaction_details.price,
+	    transaction_details.subtotal
+      ');
+      $builderDetail->join('products', 'products.id = transaction_details.product_id', 'left');
+      $builderDetail->where('transaction_id', $transaction['id']);
+      $details = $builderDetail->get()->getResultArray();
+
+      // Gabungkan Hasil
+      $result = [
+        'transactions'        => $transaction,
+        'transaction_details' => $details
+      ];
+
+
       $this->createLog("SHOW_TRANSACTION", ['SUCCESS']);
       return $this->respond([
         'status' => 'success',
-        'data'   => $data
+        'data'   => $result
       ]);
     } catch (Exception $e) {
       $this->createLog('SHOW_TRANSACTION', ['ERROR']);
