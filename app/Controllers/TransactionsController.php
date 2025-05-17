@@ -191,16 +191,21 @@ class TransactionsController extends ResourceController
         $builder->where('users.username', $username);
       }
 
-      // Ambil param date
-      $dateFilter = $this->request->getGet('date');
-      if (!empty($dateFilter)) {
-        if ($dateFilter === 'today') {
-          $today =  date('Y-m-d');
+      // Ambil param start_date dan end_date
+      $startDate = $this->request->getGet('start_date');
+      $endDate   = $this->request->getGet('end_date');
+
+      if (!empty($startDate)) {
+        if ($startDate === 'today') {
+          $today = date('Y-m-d');
           $builder->where('DATE(transactions.date_time)', $today);
-        } elseif (is_numeric($dateFilter)) {
-          $dayAgo = date('Y-m-d', strtotime("-$dateFilter days"));
-          $builder->where('DATE(transactions.date_time) >=', $dayAgo);
+        } else {
+          $builder->where('DATE(transactions.date_time) >=', $startDate);
         }
+      }
+
+      if (!empty($endDate)) {
+        $builder->where('DATE(transactions.date_time) <=', $endDate);
       }
 
       // Ambil param branch
@@ -208,7 +213,6 @@ class TransactionsController extends ResourceController
       if (!empty($branchId)) {
         $builder->where('transactions.branch_id', $branchId);
       }
-
 
       $query = $builder->get();
       $results = $query->getResultArray();
@@ -247,6 +251,7 @@ class TransactionsController extends ResourceController
         ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
     }
   }
+
 
   // GET /transactions/{id}
   public function show($transactions_code = null)
