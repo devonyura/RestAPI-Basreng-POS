@@ -31,19 +31,90 @@ class SubCategoriesController extends ResourceController
     }
   }
 
-  // Ambil semua detail transaksi
-  public function index()
+  // GET /sub-categories/{id_categories}
+  public function show($id_subcategories = null)
   {
     try {
-      $data = $this->model->findAll();
-      if (empty($data)) {
-        $this->createLog('READ_ALL_SUB_CATEGORIES', 'Tidak ada data kategori.');
-        return $this->failNotFound('Tidak ada data kategori.');
+
+
+
+      $db = \Config\Database::connect();
+      $builder = $db->table('sub_categories');
+      $builder->select('*');
+
+      // Ambil param username
+      $id_categories = $this->request->getGet('id_categories');
+      if (!empty($id_categories)) {
+        $builder->where('id_categories', $id_categories);
+      } else {
+        $builder->where('id', $id_subcategories);
       }
-      $this->createLog('READ_ALL_SUB_CATEGORIES', ['SUCCESS']);
+
+      $subCategories = $builder->get()->getResultArray();
+
+      if (empty($subCategories)) {
+        $this->createLog("SHOW_SUB_CATEGORIES", ['ERROR: Tidak ditemukan.']);
+        return $this->failNotFound('Sub kategori tidak ditemukan.');
+      }
+
+      $this->createLog("SHOW_SUB_CATEGORIES", ['SUCCESS']);
       return $this->respond([
         'status' => 'success',
-        'data'   => $data
+        'data'   => $subCategories
+      ]);
+    } catch (Exception $e) {
+      $this->createLog('SHOW_SUB_CATEGORIES', ['ERROR']);
+      return Services::response()
+        ->setJSON([
+          'status'  => 'error',
+          'message' => 'Terjadi kesalahan pada server.',
+          'error'   => $e->getMessage()
+        ])
+        ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+    }
+  }
+
+
+  // Ambil semua detail transaksi
+  public function index($id_subcategories = null)
+  {
+    try {
+      // $data = $this->model->findAll();
+      // if (empty($data)) {
+      //   $this->createLog('READ_ALL_SUB_CATEGORIES', 'Tidak ada data kategori.');
+      //   return $this->failNotFound('Tidak ada data kategori.');
+      // }
+      // $this->createLog('READ_ALL_SUB_CATEGORIES', ['SUCCESS']);
+      // return $this->respond([
+      //   'status' => 'success',
+      //   'data'   => $data
+      // ]);
+      $db = \Config\Database::connect();
+      $builder = $db->table('sub_categories');
+      $builder->select('*');
+
+      // Ambil param id categories
+      $id_categories = $this->request->getGet('id_categories');
+      if (!empty($id_categories)) {
+        $builder->where('id_categories', $id_categories);
+        $subCategories = $builder->get()->getResultArray();
+      } else if (!empty($id_subcategories)) {
+        $builder->where('id', $id_subcategories);
+        $subCategories = $builder->get()->getResultArray();
+      } else {
+        $subCategories = $this->model->findAll();
+      }
+
+
+      if (empty($subCategories)) {
+        $this->createLog("SHOW_SUB_CATEGORIES", ['ERROR: Tidak ditemukan.']);
+        return $this->failNotFound('Sub kategori tidak ditemukan.');
+      }
+
+      $this->createLog("SHOW_SUB_CATEGORIES", ['SUCCESS']);
+      return $this->respond([
+        'status' => 'success',
+        'data'   => $subCategories
       ]);
     } catch (Exception $e) {
       $this->createLog('READ_ALL_SUB_CATEGORIES', ['ERROR']);
@@ -57,6 +128,7 @@ class SubCategoriesController extends ResourceController
     }
     // return $this->respond($this->model->findAll());
   }
+
 
   // Ambil detail transaksi berdasarkan ID
   // public function show($id = null)

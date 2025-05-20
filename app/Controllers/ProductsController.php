@@ -73,6 +73,7 @@ class ProductsController extends ResourceController
     $data = $this->request->getJSON();
     $productData = [
       'category_id' => $data->category_id,
+      'subcategory_id' => $data->subcategory_id === '' ? null : $data->subcategory_id,
       'name'        => $data->name,
       'price'       => $data->price
     ];
@@ -112,6 +113,7 @@ class ProductsController extends ResourceController
   public function update($id = null)
   {
     $rules = [
+      'id' => 'required|integer',
       'category_id' => 'required|integer',
       'name'        => 'required|min_length[3]',
       'price'       => 'required|decimal'
@@ -131,9 +133,10 @@ class ProductsController extends ResourceController
     }
 
     $productData = [
-      'category_id' => $data->category_id,
       'name'        => $data->name,
-      'price'       => $data->price
+      'category_id' => $data->category_id,
+      'subcategory_id' => $data->subcategory_id,
+      'price'       => $data->price,
     ];
 
     try {
