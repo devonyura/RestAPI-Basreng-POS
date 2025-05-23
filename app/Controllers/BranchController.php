@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-use App\Models\TransactionDetailsModel;
+use App\Models\BranchModel;
 use App\Models\ActivityLogModel;
 use App\Helpers\JwtHelper;
 use CodeIgniter\RESTful\ResourceController;
@@ -13,7 +13,7 @@ use Exception;
 class BranchController extends ResourceController
 {
   protected $modelName = 'App\Models\BranchModel';
-  protected $format = 'json';
+  protected $format    = 'json';
 
   private function createLog($action, $details = null)
   {
@@ -31,22 +31,22 @@ class BranchController extends ResourceController
     }
   }
 
-  // Ambil semua detail transaksi
+  // GET /branches
   public function index()
   {
     try {
       $data = $this->model->findAll();
       if (empty($data)) {
-        $this->createLog('READ_ALL_BRANCH', 'Tidak ada data kategori.');
-        return $this->failNotFound('Tidak ada data kategori.');
+        $this->createLog('READ_ALL_BRANCHES', 'Tidak ada data cabang.');
+        return $this->failNotFound('Tidak ada data cabang.');
       }
-      $this->createLog('READ_ALL_BRANCH', ['SUCCESS']);
+      $this->createLog('READ_ALL_BRANCHES', ['SUCCESS']);
       return $this->respond([
         'status' => 'success',
         'data'   => $data
       ]);
     } catch (Exception $e) {
-      $this->createLog('READ_ALL_BRANCH', ['ERROR']);
+      $this->createLog('READ_ALL_BRANCHES', ['ERROR']);
       return Services::response()
         ->setJSON([
           'status'  => 'error',
@@ -55,79 +55,179 @@ class BranchController extends ResourceController
         ])
         ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
     }
-    // return $this->respond($this->model->findAll());
   }
 
-  // Ambil detail transaksi berdasarkan ID
+  // GET /branches/{id}
   public function show($id = null)
   {
     $data = $this->model->find($id);
     if (!$data) {
-      return $this->failNotFound('Detail transaksi tidak ditemukan');
+      return $this->failNotFound('Data cabang tidak ditemukan');
     }
-    return $this->respond($data);
+    return $this->respond([
+      'status' => 'success',
+      'data'   => $data
+    ]);
   }
 
-  // Ambil detail transaksi berdasarkan transaction_id
-  // public function showByTransactionId($transaction_id)
-  // {
-  //   $data = $this->model->where('transaction_id', $transaction_id)->findAll();
-  //   if (empty($data)) {
-  //     return $this->failNotFound('Detail transaksi tidak ditemukan untuk ID transaksi ini');
-  //   }
-  //   return $this->respond($data);
-  // }
+  // POST /branches
+  public function create()
+  {
+    $rules = [
+      'branch_name'    => 'required|min_length[3]',
+      'branch_address' => 'required|min_length[5]'
+    ];
 
-  // // Tambah detail transaksi
-  // public function create()
-  // {
-  //   $rules = [
-  //     'transaction_id' => 'required|integer',
-  //     'product_id' => 'required|integer',
-  //     'quantity' => 'required|integer',
-  //     'price' => 'required|decimal'
-  //   ];
+    if (!$this->validate($rules)) {
+      return $this->failValidationErrors($this->validator->getErrors());
+    }
 
-  //   if (!$this->validate($rules)) {
-  //     return $this->failValidationErrors($this->validator->getErrors());
-  //   }
+    $data = $this->request->getJSON();
+    $insertData = [
+      'branch_name'    => $data->branch_name,
+      'branch_address' => $data->branch_address
+    ];
 
-  //   $data = [
-  //     'transaction_id' => $this->request->getPost('transaction_id'),
-  //     'product_id' => $this->request->getPost('product_id'),
-  //     'quantity' => $this->request->getPost('quantity'),
-  //     'price' => $this->request->getPost('price'),
-  //     'subtotal' => $this->request->getPost('quantity') * $this->request->getPost('price')
-  //   ];
+    try {
+      if (!$this->model->insert($insertData)) {
+        $this->createLog('CREATE_BRANCH', ['ERROR']);
+        return Services::response()
+          ->setJSON([
+            'status'  => 'error',
+            'message' => 'Gagal menambahkan cabang.',
+            'errors'  => $this->model->errors()
+          ])
+          ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+      }
+      $this->createLog('CREATE_BRANCH', ['SUCCESS']);
+      return Services::response()
+        ->setJSON([
+          'status'  => 'success',
+          'message' => 'Cabang berhasil ditambahkan',
+          'data'    => $insertData
+        ])
+        ->setStatusCode(ResponseInterface::HTTP_CREATED);
+    } catch (Exception $e) {
+      $this->createLog('CREATE_BRANCH', ['ERROR']);
+      return Services::response()
+        ->setJSON([
+          'status'  => 'error',
+          'message' => 'Terjadi kesalahan pada server.',
+          'error'   => $e->getMessage()
+        ])
+        ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+    }
+  }
 
-  //   $this->model->insert($data);
-  //   return $this->respondCreated($data, 'Detail transaksi berhasil ditambahkan');
-  // }
+  // PUT /branches/{id}
+  public function update($id = null)
+  {
+    $data = $this->request->getJSON();
+    $rules = [
+      'branch_name'    => 'required|min_length[3]',
+      'branch_address' => 'required|min_length[5]'
+    ];
 
-  // // Perbarui detail transaksi
-  // public function update($id = null)
-  // {
-  //   $data = $this->model->find($id);
-  //   if (!$data) {
-  //     return $this->failNotFound('Detail transaksi tidak ditemukan');
-  //   }
+    if (!$this->model->find($id)) {
+      return $this->failNotFound('Cabang tidak ditemukan');
+    }
 
-  //   $updateData = $this->request->getRawInput();
-  //   $updateData['subtotal'] = $updateData['quantity'] * $updateData['price'];
+    if (!$this->validate($rules)) {
+      $this->createLog('UPDATE_BRANCH', ['ERROR: Validasi gagal']);
+      return $this->failValidationErrors($this->validator->getErrors());
+    }
 
-  //   $this->model->update($id, $updateData);
-  //   return $this->respondUpdated($updateData, 'Detail transaksi berhasil diperbarui');
-  // }
+    $updateData = [
+      'branch_name'    => $data->branch_name,
+      'branch_address' => $data->branch_address
+    ];
 
-  // // Hapus detail transaksi
-  // public function delete($id = null)
-  // {
-  //   $data = $this->model->find($id);
-  //   if (!$data) {
-  //     return $this->failNotFound('Detail transaksi tidak ditemukan');
-  //   }
+    try {
+      $this->model->update($id, $updateData);
+      $this->createLog('UPDATE_BRANCH', ['SUCCESS']);
+      return $this->respond([
+        'status'  => 'success',
+        'message' => 'Cabang berhasil diperbarui',
+        'data'    => $updateData
+      ]);
+    } catch (Exception $e) {
+      $this->createLog('UPDATE_BRANCH', ['ERROR']);
+      return Services::response()
+        ->setJSON([
+          'status'  => 'error',
+          'message' => 'Gagal memperbarui cabang.',
+          'error'   => $e->getMessage()
+        ])
+        ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+    }
+  }
 
-  //   $this->model->delete($id);
-  //   return $this->respondDeleted(['id' => $id], 'Detail transaksi berhasil dihapus');
-  // }
+  // DELETE /branches/{id}
+  public function delete($id = null)
+  {
+    try {
+      if (!$this->model->find($id)) {
+        $this->createLog('DELETE_BRANCH', ['ERROR: Tidak ditemukan']);
+        return $this->failNotFound('Cabang tidak ditemukan.');
+      }
+
+      $db = \Config\Database::connect();
+
+      // Cek relasi dengan tabel users
+      $usedByUsers = $db->table('users')
+        ->where('branch_id', $id)
+        ->countAllResults();
+
+      if ($usedByUsers > 0) {
+        $this->createLog('DELETE_BRANCH', ['ERROR: Digunakan oleh tabel users.']);
+        return Services::response()
+          ->setJSON([
+            'status'  => 'error',
+            'message' => 'Branch tidak dapat dihapus karena masih digunakan oleh user.'
+          ])
+          ->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST);
+      }
+
+      // Cek relasi dengan tabel transactions
+      $usedByTransactions = $db->table('transactions')
+        ->where('branch_id', $id)
+        ->countAllResults();
+
+      if ($usedByTransactions > 0) {
+        $this->createLog('DELETE_BRANCH', ['ERROR: Digunakan oleh tabel transactions.']);
+        return Services::response()
+          ->setJSON([
+            'status'  => 'error',
+            'message' => 'Branch tidak dapat dihapus karena masih digunakan oleh transaksi.'
+          ])
+          ->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST);
+      }
+
+      // Lanjut hapus
+      if (!$this->model->delete($id)) {
+        $this->createLog('DELETE_BRANCH', ['ERROR']);
+        return Services::response()
+          ->setJSON([
+            'status'  => 'error',
+            'message' => 'Gagal menghapus cabang.'
+          ])
+          ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+      }
+
+      $this->createLog('DELETE_BRANCH', ['SUCCESS']);
+      return $this->respond([
+        'status'  => 'success',
+        'message' => 'Cabang berhasil dihapus.'
+      ]);
+    } catch (Exception $e) {
+      $this->createLog('DELETE_BRANCH', ['ERROR']);
+      return Services::response()
+        ->setJSON([
+          'status'  => 'error',
+          'message' => 'Terjadi kesalahan pada server.',
+          'error'   => $e->getMessage()
+        ])
+        ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+    }
+  }
 }

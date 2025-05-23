@@ -79,16 +79,6 @@ class SubCategoriesController extends ResourceController
   public function index($id_subcategories = null)
   {
     try {
-      // $data = $this->model->findAll();
-      // if (empty($data)) {
-      //   $this->createLog('READ_ALL_SUB_CATEGORIES', 'Tidak ada data kategori.');
-      //   return $this->failNotFound('Tidak ada data kategori.');
-      // }
-      // $this->createLog('READ_ALL_SUB_CATEGORIES', ['SUCCESS']);
-      // return $this->respond([
-      //   'status' => 'success',
-      //   'data'   => $data
-      // ]);
       $db = \Config\Database::connect();
       $builder = $db->table('sub_categories');
       $builder->select('*');
@@ -129,77 +119,156 @@ class SubCategoriesController extends ResourceController
     // return $this->respond($this->model->findAll());
   }
 
+  // // Tambah sub category
+  public function create()
+  {
+    $rules = [
+      'id_categories' => 'required|integer',
+      'name'        => 'required|min_length[3]|is_unique[products.name]',
+    ];
 
-  // Ambil detail transaksi berdasarkan ID
-  // public function show($id = null)
-  // {
-  //   $data = $this->model->find($id);
-  //   if (!$data) {
-  //     return $this->failNotFound('Detail transaksi tidak ditemukan');
-  //   }
-  //   return $this->respond($data);
-  // }
+    if (!$this->validate($rules)) {
+      return $this->failValidationErrors($this->validator->getErrors());
+    }
 
-  // Ambil detail transaksi berdasarkan transaction_id
-  // public function showByTransactionId($transaction_id)
-  // {
-  //   $data = $this->model->where('transaction_id', $transaction_id)->findAll();
-  //   if (empty($data)) {
-  //     return $this->failNotFound('Detail transaksi tidak ditemukan untuk ID transaksi ini');
-  //   }
-  //   return $this->respond($data);
-  // }
+    $data = $this->request->getJSON();
+    $data = [
+      'id_categories' => $data->id_categories,
+      'name'        => $data->name,
+    ];
 
-  // // Tambah detail transaksi
-  // public function create()
-  // {
-  //   $rules = [
-  //     'transaction_id' => 'required|integer',
-  //     'product_id' => 'required|integer',
-  //     'quantity' => 'required|integer',
-  //     'price' => 'required|decimal'
-  //   ];
+    try {
+      if (!$this->model->insert($data)) {
+        $this->createLog('CREATE_SubCategory', ['ERROR']);
+        return Services::response()
+          ->setJSON([
+            'status'  => 'error',
+            'message' => 'Gagal menambahkan Sub category.',
+            'errors'  => $this->model->errors()
+          ])
+          ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+      }
+      $this->createLog('CREATE_SubCategory', ['SUCCESS']);
+      return Services::response()
+        ->setJSON([
+          'status'  => 'success',
+          'message' => 'Sub category berhasil ditambahkan',
+          'data'    => $data
+        ])
+        ->setStatusCode(ResponseInterface::HTTP_CREATED);
+    } catch (Exception $e) {
+      $this->createLog('CREATE_SubCategory', ['ERROR']);
+      return Services::response()
+        ->setJSON([
+          'status'  => 'error',
+          'message' => 'Terjadi kesalahan pada server.',
+          'error'   => $e->getMessage()
+        ])
+        ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+    }
+  }
 
-  //   if (!$this->validate($rules)) {
-  //     return $this->failValidationErrors($this->validator->getErrors());
-  //   }
+  // Perbarui subcategories
+  public function update($id = null)
+  {
+    $rules = [
+      'name'        => 'required|min_length[3]|is_unique[sub_categories.name,id,{$id}]'
+    ];
 
-  //   $data = [
-  //     'transaction_id' => $this->request->getPost('transaction_id'),
-  //     'product_id' => $this->request->getPost('product_id'),
-  //     'quantity' => $this->request->getPost('quantity'),
-  //     'price' => $this->request->getPost('price'),
-  //     'subtotal' => $this->request->getPost('quantity') * $this->request->getPost('price')
-  //   ];
+    $data = $this->request->getJSON();
 
-  //   $this->model->insert($data);
-  //   return $this->respondCreated($data, 'Detail transaksi berhasil ditambahkan');
-  // }
+    if (!$this->model->find($id)) {
+      return Services::response()
+        ->setJSON(['status' => 'error', 'message' => 'Sub Kategori tidak ditemukan'])
+        ->setStatusCode(404);
+    }
 
-  // // Perbarui detail transaksi
-  // public function update($id = null)
-  // {
-  //   $data = $this->model->find($id);
-  //   if (!$data) {
-  //     return $this->failNotFound('Detail transaksi tidak ditemukan');
-  //   }
+    if (!$this->validate($rules)) {
+      $this->createLog('UPDATE_SubCategory', ['ERROR: Validasi gagal']);
+      return $this->failValidationErrors($this->validator->getErrors());
+    }
 
-  //   $updateData = $this->request->getRawInput();
-  //   $updateData['subtotal'] = $updateData['quantity'] * $updateData['price'];
+    $data = [
+      'name'        => $data->name,
+    ];
 
-  //   $this->model->update($id, $updateData);
-  //   return $this->respondUpdated($updateData, 'Detail transaksi berhasil diperbarui');
-  // }
+    try {
+      $this->model->update($id, $data);
+      $this->createLog('UPDATE_SubCategory', ['SUCCESS']);
+      return Services::response()
+        ->setJSON([
+          'status'  => 'success',
+          'message' => 'Sub Kategori berhasil diperbarui',
+          'data'    => $data
+        ])
+        ->setStatusCode(200);
+    } catch (Exception $e) {
+      $this->createLog('UPDATE_SubCategory', ['ERROR']);
+      return Services::response()
+        ->setJSON([
+          'status'  => 'error',
+          'message' => 'Gagal memperbarui Sub Kategori',
+          'error'   => $e->getMessage()
+        ])
+        ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+    }
+  }
 
-  // // Hapus detail transaksi
-  // public function delete($id = null)
-  // {
-  //   $data = $this->model->find($id);
-  //   if (!$data) {
-  //     return $this->failNotFound('Detail transaksi tidak ditemukan');
-  //   }
 
-  //   $this->model->delete($id);
-  //   return $this->respondDeleted(['id' => $id], 'Detail transaksi berhasil dihapus');
-  // }
+  // DELETE /subcategories/{id}
+  public function delete($id = null)
+  {
+    try {
+      $db = \Config\Database::connect();
+
+      // Cek apakah sub kategori ditemukan
+      if (!$this->model->find($id)) {
+        $this->createLog('DELETE_SUB_CATEGORIES', ['ERROR: Sub kategori tidak ditemukan.']);
+        return $this->failNotFound('Sub kategori tidak ditemukan.');
+      }
+
+      // Cek apakah sub kategori masih digunakan oleh produk
+      $hasProducts = $db->table('products')
+        ->where('subcategory_id', $id)
+        ->countAllResults();
+
+      if ($hasProducts > 0) {
+        $this->createLog('DELETE_SUB_CATEGORIES', ['ERROR: Sub kategori masih digunakan oleh produk.']);
+        return Services::response()
+          ->setJSON([
+            'status'  => 'error',
+            'message' => 'Sub kategori tidak dapat dihapus karena masih digunakan oleh produk.'
+          ])
+          ->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST);
+      }
+
+      // Hapus sub kategori
+      if (!$this->model->delete($id)) {
+        $this->createLog('DELETE_SUB_CATEGORIES', ['ERROR: Gagal menghapus dari DB.']);
+        return Services::response()
+          ->setJSON([
+            'status'  => 'error',
+            'message' => 'Gagal menghapus sub kategori.'
+          ])
+          ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+      }
+
+      $this->createLog('DELETE_SUB_CATEGORIES', ['SUCCESS']);
+      return Services::response()
+        ->setJSON([
+          'status'  => 'success',
+          'message' => 'Sub kategori berhasil dihapus.'
+        ])
+        ->setStatusCode(200);
+    } catch (Exception $e) {
+      $this->createLog('DELETE_SUB_CATEGORIES', ['ERROR']);
+      return Services::response()
+        ->setJSON([
+          'status'  => 'error',
+          'message' => 'Terjadi kesalahan pada server.',
+          'error'   => $e->getMessage()
+        ])
+        ->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+    }
+  }
 }
