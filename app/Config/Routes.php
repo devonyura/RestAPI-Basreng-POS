@@ -16,6 +16,34 @@ $routes->group('api/auth', function ($routes) {
 });
 
 $routes->group('api', ['filter' => 'auth'], function ($routes) {
+  // Reports endpoint
+  // $routes->post('reports/sales', 'ReportsController::sales');
+  // $routes->post('reports/sales', 'ReportsController::sales');
+  // $routes->post('reports/charts', 'ReportsController::charts');
+
+
+
+  // Report
+  $routes->get('report/getAllReports', 'ReportController::getAllReports');
+  $routes->get('report/getTransactionsReport', 'ReportController::getTransactionsReport');
+  $routes->get('report/getTransactionsReport/(:num)', 'ReportController::getTransactionsReport/$1');
+  // ===============================
+  $routes->get('report/summary', 'ReportController::summary');
+  $routes->get('report/getBranchReport', 'ReportController::getBranchReport');
+  $routes->get('report/top-selling', 'ReportController::topSelling');
+
+  // $routes->get('chart/getProductSellsReport', 'ChartController::getProductSellsReport');
+  // $routes->get('chart/getProductSellsReport/(:num)', 'ChartController::getProductSellsReport/$1');
+
+  // $routes->get('chart/getBranchReport', 'ChartController::getBranchReport');
+  // $routes->get('chart/getBranchReport/(:num)', 'ChartController::getBranchReport/$1');
+  // $routes->get('chart/branch-performance', 'ChartController::branchPerformance');
+  // $routes->get('chart/category-summary', 'ChartController::categorySummary');
+
+  // users data
+  $routes->resource('users', ['controller' => 'UsersController']);
+  $routes->post('users/reset-password', 'UsersController::resetPassword');
+
   $routes->resource('siswa', ['controller' => 'SiswaController']);
 
   $routes->resource('transactions', ['controller' => 'TransactionsController']);
@@ -30,11 +58,6 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
 
   $routes->get('transaction-details/transaction/(:num)', 'TransactionsDetailsController::showByTransactionId/$1');
   $routes->resource('transaction-details', ['controller' => 'TransactionsDetailsController']);
-
-
-  // Reports endpoint
-  $routes->post('reports/sales', 'ReportsController::sales');
-  $routes->post('reports/charts', 'ReportsController::charts');
 });
 
 $routes->get('api/logs', 'LogController::index');

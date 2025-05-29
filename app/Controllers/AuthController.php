@@ -74,7 +74,8 @@ class AuthController extends ResourceController
         'username' => $user['username'],
         'role' => $user['role'],
         'branch_id' => $user['branch_id']
-      ]);
+      ]
+    );
 
     $this->logModel->logActivity($user['id'], $user['username'], 'LOGIN', ['Login Berhasil!']);
 
