@@ -24,6 +24,7 @@ $routes->group('api', ['filter' => 'auth'], function ($routes) {
 
 
   // Report
+  $routes->get('report/getDetailReport/(:any)', 'ReportController::getDetailReport/$1');
   $routes->get('report/getAllReports', 'ReportController::getAllReports');
   $routes->get('report/getTransactionsReport', 'ReportController::getTransactionsReport');
   $routes->get('report/getTransactionsReport/(:num)', 'ReportController::getTransactionsReport/$1');

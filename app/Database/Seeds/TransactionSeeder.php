@@ -44,7 +44,7 @@ class TransactionSeeder extends Seeder
 
     $now = new \DateTime();
 
-    for ($i = 0; $i < 31; $i++) {
+    for ($i = 0; $i < 93; $i++) {
       $day = (clone $now)->modify("-$i days");
 
       $transactionsPerDay = rand(3, 10);
